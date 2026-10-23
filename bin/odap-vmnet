@@ -3,14 +3,15 @@
 #
 # Usage: odap-vmnet [install|uninstall|status]   (default: status)
 #
-# install runs socket_vmnet as a root-owned launchd daemon bridged to the interface of the default
-# route (ODAP_LAN_INTERFACE overrides it). Run it as yourself: it asks for your password only for
-# the steps that need administrator rights. Run through sudo, it still works: Homebrew, which
-# refuses to run as root, is then run as the user who called sudo.
+# macOS bridges a VM to the LAN only through vmnet.framework, which needs root. socket_vmnet (Lima
+# project) is the small root daemon that holds vmnet; QEMU connects to it as the user.
 #
-# The binaries are copied to /opt/socket_vmnet, owned by root, instead of running Homebrew's copy
-# as root, because the Homebrew prefix is writable by the user (Lima's guidance for socket_vmnet).
-# odap-vdev finds the daemon by its socket, /var/run/socket_vmnet.bridged.<interface>.
+# install fetches the pinned upstream release of socket_vmnet, checks its SHA-256, unpacks it to
+# /opt/socket_vmnet owned by root (upstream's binary install, the layout Lima expects), and runs it
+# as a launchd daemon bridged to the interface of the default route (ODAP_LAN_INTERFACE overrides
+# it). Run it as yourself or through sudo; as yourself it asks for your password only for the
+# steps that need administrator rights. odap-vdev finds the daemon by its socket,
+# /var/run/socket_vmnet.bridged.<interface>.
 #
 # Exit status: 0 success (status: running), 1 failure (status: not running), 2 usage error.
 set -eu
@@ -28,33 +29,42 @@ log="/var/log/socket_vmnet.bridged.$iface.log"
 # Privileged steps: directly when already root, through sudo otherwise.
 as_root() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi; }
 
-# Homebrew as the calling user, never as root.
-brew_user() {
-  if [ "$(id -u)" != 0 ]; then
-    brew "$@"
-  elif [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
-    sudo -u "$SUDO_USER" -H env PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" brew "$@"
-  else
-    die "Homebrew cannot run as root: run odap-vmnet install as your user" 2
+# The pinned upstream release: https://github.com/lima-vm/socket_vmnet/releases
+version=1.2.2
+case "$(uname -m)" in
+  arm64) sha256=c7bf62308fbcfdc29bdfb8373c9b1951f7ac2396446e4390919796a94972e6dc ;;
+  x86_64) sha256=2968a82c97e692c2d36f87230152e8018e00589c1b598e8257775adfe83800a1 ;;
+  *) die "no socket_vmnet release for $(uname -m)" ;;
+esac
+bin=/opt/socket_vmnet/bin
+
+install_binaries() {
+  file="socket_vmnet-$version-$(uname -m).tar.gz"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  curl -fsSL -o "$tmp/$file" "https://github.com/lima-vm/socket_vmnet/releases/download/v$version/$file" \
+    || die "could not download $file"
+  echo "$sha256  $tmp/$file" | shasum -a 256 -c -s || die "$file does not match its pinned SHA-256"
+  tar -xzf "$tmp/$file" -C "$tmp" ./opt/socket_vmnet
+  if cmp -s "$tmp/opt/socket_vmnet/bin/socket_vmnet" "$bin/socket_vmnet" && cmp -s "$tmp/opt/socket_vmnet/bin/socket_vmnet_client" "$bin/socket_vmnet_client"; then
+    return 0
   fi
+  as_root tar -xzf "$tmp/$file" -C / ./opt/socket_vmnet
+  as_root chown -R root:wheel /opt/socket_vmnet
+  echo "socket_vmnet $version installed in /opt/socket_vmnet"
 }
 
 install_daemon() {
   [ -n "$iface" ] || die "no default-route interface; set ODAP_LAN_INTERFACE"
-  brew_user list socket_vmnet >/dev/null 2>&1 || brew_user install socket_vmnet
-  src="$(brew_user --prefix socket_vmnet)/bin"
-  [ -x "$src/socket_vmnet" ] || die "socket_vmnet not found in $src"
-
-  [ "$(id -u)" = 0 ] || echo "Administrator rights are needed to install the daemon:"
-  as_root mkdir -p /opt/socket_vmnet/bin
-  as_root install -o root -g wheel -m 0755 "$src/socket_vmnet" "$src/socket_vmnet_client" /opt/socket_vmnet/bin/
+  [ "$(id -u)" = 0 ] || echo "Administrator rights are needed for /opt/socket_vmnet and the daemon:"
+  install_binaries
   as_root tee "$plist" >/dev/null <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>$label</string>
   <key>ProgramArguments</key><array>
-    <string>/opt/socket_vmnet/bin/socket_vmnet</string>
+    <string>$bin/socket_vmnet</string>
     <string>--vmnet-mode=bridged</string>
     <string>--vmnet-interface=$iface</string>
     <string>--socket-group=staff</string>
