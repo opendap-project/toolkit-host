@@ -49,7 +49,13 @@ install_binaries() {
   if cmp -s "$tmp/opt/socket_vmnet/bin/socket_vmnet" "$bin/socket_vmnet" && cmp -s "$tmp/opt/socket_vmnet/bin/socket_vmnet_client" "$bin/socket_vmnet_client"; then
     return 0
   fi
-  as_root tar -xzf "$tmp/$file" -C / ./opt/socket_vmnet
+  # Root checks and unpacks its own copy: never the user-writable file it would re-read.
+  rtmp="$(as_root mktemp -d)"
+  as_root cp "$tmp/$file" "$rtmp/$file"
+  echo "$sha256  $rtmp/$file" | as_root shasum -a 256 -c -s \
+    || { as_root rm -rf "$rtmp"; die "$file does not match its pinned SHA-256"; }
+  as_root tar -xzf "$rtmp/$file" -C / ./opt/socket_vmnet
+  as_root rm -rf "$rtmp"
   as_root chown -R root:wheel /opt/socket_vmnet
   echo "socket_vmnet $version installed in /opt/socket_vmnet"
 }
