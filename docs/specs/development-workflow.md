@@ -25,7 +25,7 @@
 |---|---|---|
 | **Host** (macOS, or Linux) | Edit, `cargo check`, `cargo test`, `cargo clippy`; run the product UI natively; cross-build for aarch64; deploy; drive and capture the virtual T1 or the T1; every repository check (pre-commit, REUSE) | Hold anything another machine needs in order to build |
 | **Build VM** (Lima, `blackbird-os/build/lima/`) | `mkosi` builds: images (`qemu`, `oci`, later `t1`) and the `sysroot` profile | Compile OpenDAP software; hold a Rust toolchain; keep state that is not in the image definition |
-| **Virtual T1** (QEMU, `blackbird-os/build/dap-qemu.sh`) | Run Blackbird OS on the virtual board: display, touch, buttons, audio, battery (OS-018) | Build anything |
+| **Virtual devices** (QEMU, [virtual-devices](https://github.com/opendap-project/virtual-devices) `build/dap-qemu.sh`) | Run Blackbird OS on a virtual model: display, touch, buttons, audio, battery, USB, microSD, LAN (VD-001) | Build anything |
 | **T1** | Run Blackbird OS on the hardware | Build anything |
 
 On a Linux host the build VM is optional: mkosi can run on the host itself. Everything else is unchanged. Only macOS is tested (TK-011).
@@ -54,9 +54,9 @@ On a Linux host the build VM is optional: mkosi can run on the host itself. Ever
 |---|---|---|---|
 | **Host tests** | `cargo test -p <crate>` | Domain and core crates, which are platform-agnostic (Rust crate architecture §4); adapters with fakes | Seconds |
 | **UI on the host** | `cargo run -p dap-product` | Product UI: layout, tokens, type, icons, touch with the pointer. The same `.slint`, tokens and fonts as on the device; data that only a device has (battery, outputs) is absent, as on any hardware without it | Seconds |
-| **Virtual T1** | `system/scripts/deploy.sh [crates…]`, then `dap-qmp.py screenshot / press / tap`, VNC on `127.0.0.1:5900` and `dap-qemu.sh ssh journalctl -u dap-shell` | The shell and anything that needs DRM, libinput, logind, systemd, ALSA or the virtual board's description | Seconds to deploy; a cross-build is incremental |
+| **Virtual T1** | `system/scripts/deploy.sh [crates…]`, then virtual-devices `build/dap-qmp.py screenshot / press / tap`, the `--window`, and `build/dap-qemu.sh ssh journalctl -u dap-shell` | The shell and anything that needs DRM, libinput, logind, systemd, ALSA or the virtual board's description | Seconds to deploy; a cross-build is incremental |
 | **T1** | The same extension over SSH on the USB network link (ADR 0013 in blackbird-os), once the hardware exists | Timing, power, audio quality, the real panel, buttons and LED | — |
-| **Image** | `blackbird-os/build/dap-image.sh qemu`, then `dap-qemu.sh start` | Changes to the image definition: packages, units, configuration, the board's description | Minutes |
+| **Image** | `blackbird-os/build/dap-image.sh qemu`, then virtual-devices `build/dap-qemu.sh start` | Changes to the image definition: packages, units, configuration, the board's description | Minutes |
 
 **Development extension.**
 
@@ -75,7 +75,8 @@ Development extensions never go into images and are not how software ships (§6)
 |---|---|---|
 | Services, the shell, the product host, the SDK | `system` (Rust workspace) | Development: the development extension. Release: `.deb` packages in the OpenDAP repositories (L2), built with cargo-deb (**not built yet**) |
 | Tokens, fonts, icons | `blackbird-ui`: `tokens/generate.py` writes `export/slint/` and `export/css/` | Compiled into the product host at build time; `system` reads Blackbird UI's outputs (`BLACKBIRD_UI`, default the workspace's checkout), never its sources |
-| Image definition: packages, units, session, the board's device description | `blackbird-os/image/` | The image (L1). For now the shell's session lives in the `qemu` profile, and the `t1` profile will share it |
+| Image definition: packages, units, session | `blackbird-os/image/` | The image (L1). For now the shell's session lives in the `qemu` profile, and the `t1` profile will share it |
+| Virtual hardware: layers, models, the virtual board's support package | `virtual-devices` | QEMU's devices, and the description through fw_cfg (no model in the image) |
 | Test fixtures (other boards, no display) | `system/crates/opendap-device/fixtures/` | Tests only |
 
 ## 6. From development to release
