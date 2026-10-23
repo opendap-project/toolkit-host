@@ -10,7 +10,7 @@ echo "== Git LFS"
 git lfs install --skip-repo
 
 echo "== Rust targets"
-# aarch64 Linux (OpenDAP OS, glibc and musl), Cortex-M0+ (STM32U0), Cortex-M33 and RISC-V (RP2350)
+# aarch64 Linux (Blackbird OS, glibc and musl), Cortex-M0+ (STM32U0), Cortex-M33 and RISC-V (RP2350)
 rustup target add aarch64-unknown-linux-gnu aarch64-unknown-linux-musl \
   thumbv6m-none-eabi thumbv8m.main-none-eabihf riscv32imac-unknown-none-elf
 

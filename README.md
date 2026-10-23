@@ -32,7 +32,7 @@ Recommendations from [`docs/research/`](docs/research/), not installed yet:
 
 - **Layout:** openEMS (built from source), gerber2ems, Elmer FEM, scikit-rf and SignalIntegrity (per study).
 - **Mechanical prototyping:** FreeCAD addons KiCad StepUp, SheetMetal and Fasteners (Addon Manager); CalculiX; slicers for the DIY kit.
-- **Once the SoC is chosen:** uuu (i.MX) or rockusb (Rockchip), bmaptool, the OpenDAP OS build container.
+- **Once the SoC is chosen:** uuu (i.MX) or rockusb (Rockchip), bmaptool, the Blackbird OS build container.
 - **FPGA HATs:** OSS CAD Suite.
 - **Bring-up:** PulseView, ngscopeclient, Tracy, Arm GNU Toolchain.
 - **Production:** test frameworks and fixtures.

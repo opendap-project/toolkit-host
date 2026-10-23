@@ -9,7 +9,7 @@
 ## Context assumed
 
 - All custom software and firmware is written in Rust.
-- OpenDAP OS is a trimmed image built from Debian or Alpine packages. It uses mainline kernel 7+ and **no custom kernel builds**.
+- Blackbird OS is a trimmed image built from Debian or Alpine packages. It uses mainline kernel 7+ and **no custom kernel builds**.
 - Kernel status on 2026-10-21: mainline 7.3 (2026-10-18), stable 7.2.12, latest LTS 6.18.58 ([kernel.org](https://www.kernel.org/)).
 - Debian stable is 13 "trixie" (13.7, 2026-09-12) and ships a 6.12 kernel ([debian.org](https://www.debian.org/releases/trixie/)). To get kernel 7+ without building one, the image would have to use trixie-backports, testing ("forky") or Alpine's newer kernel flavours. **UNVERIFIED:** which kernel versions these carry right now. Check this before choosing a distro, because it is the single biggest constraint on the "no custom kernel" rule.
 - Helper MCUs:
@@ -29,7 +29,7 @@ One point simplifies a lot: **Apple Silicon is aarch64**. An arm64 Linux VM or c
 ### Need
 
 - Develop the UI and system services (compositor, audio, power, apps) before hardware exists, on both host OSes.
-- Smoke-test the real OpenDAP OS image in CI.
+- Smoke-test the real Blackbird OS image in CI.
 - Run MCU firmware without a board where it helps (protocol and state-machine tests).
 
 ### Recommended tools
@@ -42,7 +42,7 @@ One point simplifies a lot: **Apple Silicon is aarch64**. An arm64 Linux VM or c
 | krunkit / libkrun (virtio-gpu Venus on macOS) | krunkit 1.3.2 (2026-07) | Apache-2.0 | Medium. Built for Podman and AI workloads, not for desktops | Yes, macOS 14+ only ([repo](https://github.com/libkrun/krunkit)) |
 | **Renode** | 1.17.0 (2026-09-07) ([releases](https://github.com/renode/renode/releases)) | MIT | Mature for MCUs | Yes. Native arm64 macOS since 1.17 |
 
-**QEMU `virt` with virtio for OpenDAP OS UI work.** This is the main recommendation. A "QEMU flavour" of the OpenDAP OS image boots the same rootfs with a generic arm64 kernel and DTB-less ACPI or `virt` DT. It uses:
+**QEMU `virt` with virtio for Blackbird OS UI work.** This is the main recommendation. A "QEMU flavour" of the Blackbird OS image boots the same rootfs with a generic arm64 kernel and DTB-less ACPI or `virt` DT. It uses:
 
 - `virtio-gpu` (2D) or `virtio-gpu-gl` (virgl). Guest Wayland compositors run on virtio-gpu through Mesa's `virgl` driver, or on `llvmpipe` with 2D only.
 - **virtio-snd** (`-device virtio-sound-pci,audiodev=…`) with backends PulseAudio, ALSA, SDL and **CoreAudio**. The guest needs `CONFIG_SND_VIRTIO` ([QEMU docs](https://www.qemu.org/docs/master/system/devices/virtio/virtio-snd.html)). Today the device has playback-first streams and no jack or chmap configuration, which is enough for PipeWire and ALSA development, not for testing capture paths.
@@ -89,8 +89,8 @@ All of it from macOS and Linux hosts and CI, with pinned toolchains.
 
 | Component | Rust target | Notes |
 |---|---|---|
-| OpenDAP OS userspace, Debian | `aarch64-unknown-linux-gnu` (Tier 1) | Must match the distro glibc (trixie: glibc 2.41, **UNVERIFIED**) |
-| OpenDAP OS userspace, Alpine | `aarch64-unknown-linux-musl` (Tier 2 with host tools) | Dynamic linking against Alpine's musl libs is needed for Mesa and PipeWire. Rust defaults to static musl, so set `-C target-feature=-crt-static` |
+| Blackbird OS userspace, Debian | `aarch64-unknown-linux-gnu` (Tier 1) | Must match the distro glibc (trixie: glibc 2.41, **UNVERIFIED**) |
+| Blackbird OS userspace, Alpine | `aarch64-unknown-linux-musl` (Tier 2 with host tools) | Dynamic linking against Alpine's musl libs is needed for Mesa and PipeWire. Rust defaults to static musl, so set `-C target-feature=-crt-static` |
 | Standalone static tools (installers, recovery, CI helpers) | `aarch64-unknown-linux-musl` static | Runs on either distro |
 | STM32U0 (Cortex-M0+) | `thumbv6m-none-eabi` | No hardware atomics. Use `portable-atomic` or `critical-section` |
 | RP2350 Arm cores (M33, FPU) | `thumbv8m.main-none-eabihf` | Main target ([Raspberry Pi: Rust on RP2350](https://www.raspberrypi.com/news/rust-on-rp2350/)) |
@@ -105,10 +105,10 @@ The choice between **glibc and musl follows the distro choice**. It is not a sep
 | Tool | Version | License | macOS | Use |
 |---|---|---|---|---|
 | rustup + `rust-toolchain.toml` | Rust **1.99.1** (2026-10-15) ([blog](https://blog.rust-lang.org/releases)) | MIT/Apache-2.0 | Yes | Pin channel, components and targets per repo |
-| **Native arm64 Linux container or VM** (Debian or Alpine base matching OpenDAP OS) | n/a | n/a | Yes, native speed on Apple Silicon | **Main path for anything linking system libs**: `apt install libasound2-dev libpipewire-0.3-dev libwayland-dev …` or the `apk` equivalents, then plain `cargo build` |
+| **Native arm64 Linux container or VM** (Debian or Alpine base matching Blackbird OS) | n/a | n/a | Yes, native speed on Apple Silicon | **Main path for anything linking system libs**: `apt install libasound2-dev libpipewire-0.3-dev libwayland-dev …` or the `apk` equivalents, then plain `cargo build` |
 | **cargo-zigbuild** | 0.24.0 (2026-10-21) | MIT | Yes (arm64 binaries) | Cross-linking with a chosen glibc version (`--target aarch64-unknown-linux-gnu.2.36`) without a cross GCC. Good for pure-Rust crates and for linking against a sysroot |
 | Zig (linker for zigbuild) | 0.15.2 | MIT | Yes | Pin it, because zigbuild behaviour follows Zig versions |
-| cross (cross-rs) | 0.2.5. The last release is old (2023-02, per the GitHub API) | MIT/Apache-2.0 | Partial. Its images are x86_64 and run under emulation on Apple Silicon | **Not recommended** as the main tool. Its sysroots are Ubuntu-based and do not match OpenDAP OS |
+| cross (cross-rs) | 0.2.5. The last release is old (2023-02, per the GitHub API) | MIT/Apache-2.0 | Partial. Its images are x86_64 and run under emulation on Apple Silicon | **Not recommended** as the main tool. Its sysroots are Ubuntu-based and do not match Blackbird OS |
 | Debian multiarch sysroot (`mmdebstrap --variant=extract --architectures=arm64 … libasound2-dev …`) | mmdebstrap 1.5.7 | MIT | Linux, or a Linux VM on Mac | Sysroot that matches the target exactly, for zigbuild or clang cross-linking from x86_64 CI |
 | `pkg-config` with `PKG_CONFIG_SYSROOT_DIR` and `PKG_CONFIG_PATH` | n/a | n/a | Yes | Needed by `alsa-sys`, `pipewire-sys`, `wayland-sys` and similar crates |
 | cargo-deb (Debian) / `abuild` (Alpine) | **UNVERIFIED** current versions | MIT / GPL | Yes / container | Package Rust binaries as distro packages so the image builder installs them like any other package |
@@ -120,7 +120,7 @@ Practical rules:
 - Put `rust-toolchain.toml` in every repo with `channel = "1.99.1"` (an exact version, not `stable`), `components = ["rustfmt","clippy","llvm-tools","rust-src"]`, and `targets` listing every target the repo builds.
 - Commit `Cargo.lock`, including in libraries that ship firmware.
 - Set `SOURCE_DATE_EPOCH`, and add `--remap-path-prefix` (or `trim-paths` once it is stable; **UNVERIFIED** status in 1.99) for reproducible binaries.
-- From x86_64 CI, the cleanest route is to build natively on **arm64 runners** (section 7) inside the OpenDAP OS base container. That removes most cross-linking problems.
+- From x86_64 CI, the cleanest route is to build natively on **arm64 runners** (section 7) inside the Blackbird OS base container. That removes most cross-linking problems.
 
 ### Gaps and fallbacks
 
@@ -327,7 +327,7 @@ How each handles arm64 on the hosts:
 
 ### Recommendation
 
-- **If Debian:** mmdebstrap for the rootfs (reproducible) plus systemd-repart or genimage for the disk, driven by a small Rust or `just` task runner. Or use **debos** if YAML recipes are preferred, at the cost of needing KVM. mkosi is attractive if OpenDAP OS adopts systemd A/B updates (`systemd-sysupdate`, verity, UKI). Prototype both against the update strategy.
+- **If Debian:** mmdebstrap for the rootfs (reproducible) plus systemd-repart or genimage for the disk, driven by a small Rust or `just` task runner. Or use **debos** if YAML recipes are preferred, at the cost of needing KVM. mkosi is attractive if Blackbird OS adopts systemd A/B updates (`systemd-sysupdate`, verity, UKI). Prototype both against the update strategy.
 - **If Alpine:** alpine-make-rootfs plus genimage. Evaluate apko for a reproducible rootfs layer.
 - In both cases, use the **distro kernel package** (no custom builds) and a pinned package snapshot. Keep the boot firmware from section 4 as a separate, pinned artifact that the image builder pulls in.
 
@@ -375,7 +375,7 @@ One reproducible toolchain definition shared by many repos (OS, apps, firmware f
 | Option | Version | License | macOS | Fit |
 |---|---|---|---|---|
 | **Host-native: rustup plus `rust-toolchain.toml` plus mise** | mise v2026.10.17 | MIT | Yes | Light. mise pins cargo tools, zig, probe-rs, just and others per repo through `mise.toml` and a lockfile. Rust targets and components can be scoped per task ([release notes](https://newreleases.io/project/github/jdx/mise/release/v2026.4.13)) |
-| **Dev container / OCI image** (Debian or Alpine base **identical to OpenDAP OS**, arm64 and amd64) | devcontainer spec, **UNVERIFIED** CLI version | MIT | Yes, through Docker, OrbStack or Lima. Apple `container` support for devcontainers is **UNVERIFIED** | The **same image is the CI build image and the sysroot**. Best for anything that links distro libs or builds images |
+| **Dev container / OCI image** (Debian or Alpine base **identical to Blackbird OS**, arm64 and amd64) | devcontainer spec, **UNVERIFIED** CLI version | MIT | Yes, through Docker, OrbStack or Lima. Apple `container` support for devcontainers is **UNVERIFIED** | The **same image is the CI build image and the sysroot**. Best for anything that links distro libs or builds images |
 | Nix flakes plus devenv | devenv 2.4.0; Determinate Nix installer | LGPL / Apache | Yes (good on Apple Silicon) | Most reproducible. Cross toolchains for aarch64-linux from a Mac are possible but heavy. Steeper learning curve; nixpkgs does not match the Debian or Alpine sysroot |
 
 ### Recommendation
@@ -383,7 +383,7 @@ One reproducible toolchain definition shared by many repos (OS, apps, firmware f
 Use a **hybrid**:
 
 1. **On the host**, install only what touches USB hardware or is interactive. That means probe-rs, uuu, rockusb or rkdeveloptool, dfu-util, picotool, openFPGALoader, bmaptool, a serial terminal, QEMU or UTM, and the Tracy and samply viewers. Add rustup with the embedded targets, because MCU work is pleasant natively. Pin all of these with **mise**, using a shared `mise.toml` template.
-2. **In a container**, keep anything that links OpenDAP OS libs, builds packages or images, or needs a legacy GCC (NanoVNA). Publish versioned images `ghcr.io/opendap/build-{debian,alpine}:<date>` and `ghcr.io/opendap/fw-legacy-gcc:<ver>`, built from a dedicated `toolchain` repo.
+2. **In a container**, keep anything that links Blackbird OS libs, builds packages or images, or needs a legacy GCC (NanoVNA). Publish versioned images `ghcr.io/opendap/build-{debian,alpine}:<date>` and `ghcr.io/opendap/fw-legacy-gcc:<ver>`, built from a dedicated `toolchain` repo.
 3. **Share** through a `toolchain` repo containing:
    - the container definitions;
    - a canonical `rust-toolchain.toml`;
