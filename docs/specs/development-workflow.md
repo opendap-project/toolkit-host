@@ -37,7 +37,7 @@ On a Linux host the build VM is optional: mkosi can run on the host itself. Only
 | Sysroot | The image's own packages plus their `-dev` packages, built by the `sysroot` profile | toolkit-image `odap-sysroot` |
 | Image builder | mkosi in the build VM | toolkit-image `odap-image` |
 | Development key | One ed25519 key, host-wide in `~/.local/share/opendap/dev-ssh` | toolkit-image `odap-dev-key` |
-| Emulator | QEMU with HVF on macOS; socket_vmnet for a LAN address | `Brewfile`; `socket-vmnet.sh install` |
+| Emulator | QEMU with HVF on macOS; socket_vmnet for a LAN address | `Brewfile`; `bin/odap-vmnet install` |
 
 - **Sysroot.** Linking against libinput, libseat, GBM, EGL, Wayland or ALSA needs the target's headers and libraries.
   - It is built from the image definition, so binaries link against exactly what the image ships.

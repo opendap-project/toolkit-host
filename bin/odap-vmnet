@@ -1,0 +1,90 @@
+#!/bin/sh
+# odap-vmnet: give virtual OpenDAP devices a NIC on this Mac's network (virtual-devices VD-003).
+#
+# Usage: odap-vmnet [install|uninstall|status]   (default: status)
+#
+# install runs socket_vmnet as a root-owned launchd daemon bridged to the interface of the default
+# route (ODAP_LAN_INTERFACE overrides it). Run it as yourself: it asks for your password only for
+# the steps that need administrator rights. Run through sudo, it still works: Homebrew, which
+# refuses to run as root, is then run as the user who called sudo.
+#
+# The binaries are copied to /opt/socket_vmnet, owned by root, instead of running Homebrew's copy
+# as root, because the Homebrew prefix is writable by the user (Lima's guidance for socket_vmnet).
+# odap-vdev finds the daemon by its socket, /var/run/socket_vmnet.bridged.<interface>.
+#
+# Exit status: 0 success (status: running), 1 failure (status: not running), 2 usage error.
+set -eu
+
+die() { echo "odap-vmnet: $1" >&2; exit "${2:-1}"; }
+
+[ "$(uname -s)" = Darwin ] || die "macOS only; on Linux, bridge a tap device instead" 2
+
+iface="${ODAP_LAN_INTERFACE:-$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')}"
+label="org.opendap.socket_vmnet.bridged.$iface"
+plist="/Library/LaunchDaemons/$label.plist"
+sock="/var/run/socket_vmnet.bridged.$iface"
+log="/var/log/socket_vmnet.bridged.$iface.log"
+
+# Privileged steps: directly when already root, through sudo otherwise.
+as_root() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi; }
+
+# Homebrew as the calling user, never as root.
+brew_user() {
+  if [ "$(id -u)" != 0 ]; then
+    brew "$@"
+  elif [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    sudo -u "$SUDO_USER" -H env PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" brew "$@"
+  else
+    die "Homebrew cannot run as root: run odap-vmnet install as your user" 2
+  fi
+}
+
+install_daemon() {
+  [ -n "$iface" ] || die "no default-route interface; set ODAP_LAN_INTERFACE"
+  brew_user list socket_vmnet >/dev/null 2>&1 || brew_user install socket_vmnet
+  src="$(brew_user --prefix socket_vmnet)/bin"
+  [ -x "$src/socket_vmnet" ] || die "socket_vmnet not found in $src"
+
+  [ "$(id -u)" = 0 ] || echo "Administrator rights are needed to install the daemon:"
+  as_root mkdir -p /opt/socket_vmnet/bin
+  as_root install -o root -g wheel -m 0755 "$src/socket_vmnet" "$src/socket_vmnet_client" /opt/socket_vmnet/bin/
+  as_root tee "$plist" >/dev/null <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key><array>
+    <string>/opt/socket_vmnet/bin/socket_vmnet</string>
+    <string>--vmnet-mode=bridged</string>
+    <string>--vmnet-interface=$iface</string>
+    <string>--socket-group=staff</string>
+    <string>$sock</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardErrorPath</key><string>$log</string>
+</dict></plist>
+PLIST
+  as_root chown root:wheel "$plist"
+  as_root chmod 0644 "$plist"
+  as_root launchctl bootout system "$plist" 2>/dev/null || true
+  as_root launchctl bootstrap system "$plist"
+  i=0
+  while [ ! -S "$sock" ] && [ "$i" -lt 10 ]; do sleep 0.5; i=$((i + 1)); done
+  [ -S "$sock" ] || die "socket_vmnet did not start; see $log"
+  echo "socket_vmnet bridged to $iface: $sock"
+  echo "Restart a running virtual device to give it the LAN: odap-vdev stop && odap-vdev start"
+}
+
+case "${1:-status}" in
+  install) install_daemon ;;
+  uninstall)
+    as_root launchctl bootout system "$plist" 2>/dev/null || true
+    as_root rm -f "$plist" "$sock"
+    echo "removed $label (the binaries stay in /opt/socket_vmnet)" ;;
+  status)
+    if [ -S "$sock" ]; then echo "running: $sock"
+    else echo "not running ($sock missing); to install: odap-vmnet install"; exit 1; fi ;;
+  -h|--help) sed -n '2,15s/^# \{0,1\}//p' "$0" ;;
+  *) die "usage: odap-vmnet [install|uninstall|status]" 2 ;;
+esac

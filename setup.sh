@@ -42,6 +42,6 @@ done
 
 echo "== Virtual T1 network"
 # The LAN for the virtual T1 needs administrator rights once; it is not run automatically.
-"$here/socket-vmnet.sh" status || echo "To give the virtual T1 a LAN address: $here/socket-vmnet.sh install"
+"$here/bin/odap-vmnet" status || true
 
 echo "== Done"
