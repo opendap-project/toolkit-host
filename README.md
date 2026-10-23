@@ -23,8 +23,12 @@ The script is safe to run again. It installs the Homebrew packages in [`Brewfile
 | Repository hygiene | pre-commit, REUSE, Git LFS, gh, jq, yq |
 | Simulation | ngspice; Python studies use `uv` with their own `pyproject.toml` |
 | Firmware | rustup targets for aarch64 Linux (glibc, musl), Cortex-M0+, Cortex-M33 and RISC-V; probe-rs, picotool, dfu-util, OpenOCD, tio, sigrok-cli |
-| Rust | cargo-binstall, cargo-nextest, cargo-deny |
-| Emulation | QEMU |
+| Rust | cargo-binstall, cargo-nextest, cargo-deny; zig and cargo-zigbuild, to cross-build for Blackbird OS against its sysroot |
+| Emulation | QEMU; Lima, the Linux VM that builds images and the sysroot |
+
+## Development workflow
+
+Code is built and tested on the host; the build VM only builds images and the sysroot, and the virtual T1 and the T1 only run software: [development workflow](docs/specs/development-workflow.md).
 
 ## Installed later, when the phase needs them
 
@@ -41,7 +45,7 @@ Recommendations from [`docs/research/`](docs/research/), not installed yet:
 
 - `setup.sh` — installs and checks everything; safe to run again
 - `Brewfile` — Homebrew packages
-- `docs/` — requirements and research
+- `docs/` — requirements, research and specs (development workflow)
 
 ## License
 

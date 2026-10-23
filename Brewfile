@@ -26,6 +26,9 @@ brew "sigrok-cli"
 
 # Rust tooling
 brew "cargo-binstall"
+# Linker for cross-builds to Blackbird OS against the image's glibc (cargo-zigbuild)
+brew "zig"
 
-# Emulation
+# Emulation, and the Linux VM that builds images and the sysroot
 brew "qemu"
+brew "lima"

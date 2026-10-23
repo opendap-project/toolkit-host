@@ -15,7 +15,7 @@ rustup target add aarch64-unknown-linux-gnu aarch64-unknown-linux-musl \
   thumbv6m-none-eabi thumbv8m.main-none-eabihf riscv32imac-unknown-none-elf
 
 echo "== Rust cargo tools"
-cargo binstall -y --locked cargo-nextest cargo-deny
+cargo binstall -y --locked cargo-nextest cargo-deny cargo-zigbuild
 
 echo "== KiCad"
 kicad_cli="${KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}"
