@@ -127,6 +127,7 @@ Host: macOS 27, Apple silicon. Virtual T1 from the `qemu` image built the same d
 | Battery | `battery_capacity` 7, 50, 100 | Level and glyph follow at the next minute | 7 % shown after the next minute without a restart. The glyph first stayed full at 7 %; it is now drawn with a fill of 1, 5 and 10 px out of 10. One layout regression (the percentage drifting to the centre) was found and fixed in the same pass |
 | Product host crash | `kill -9` on `dap-product` | Session restarts by itself | Shell exits, systemd restarts it, the screen returns in about 4–5 s. The screen is black meanwhile (finding) |
 | Static screen | 20 s, no input, every thread | 0 wakeups (shell spec §5.1) | `dap-shell`: 0. `dap-product`: 40 wakeups from the thread `blocking-1` (a futex timeout twice a second). **Fails the gate.** Probable cause, **UNVERIFIED**: the `blocking` thread pool behind AccessKit's AT-SPI connection, with no session bus in the image (`/run/user/989/bus` is missing) |
+| Static screen, again (after RFC 0008) | 50 s within one minute, no input, every thread of `odap-shell` and `odap-product` | 0 wakeups (shell spec §5.1) | 0 in every thread. **Passes.** The cause was not the session bus: `blocking` 1.7.0 (behind zbus, for Slint's accessibility) keeps idle threads alive, waking every 500 ms (smol-rs/blocking#75 changed the exit condition). `odap-product` holds it below 1.7. The session bus (`dbus-user-session`) is in the image anyway, for accessibility over AT-SPI. Once a minute the clock redraws, as it should |
 
 ### Not covered, and why
 
