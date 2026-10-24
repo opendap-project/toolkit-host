@@ -40,8 +40,15 @@ for app in FreeCAD Blender; do
   fi
 done
 
+echo "== odapkit"
+# The toolkit's one command (rfcs 0009), linked onto PATH; it finds every odapkit-* tool itself.
+mkdir -p "$HOME/.local/bin"
+ln -sf "$here/bin/odapkit" "$HOME/.local/bin/odapkit"
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "Add ~/.local/bin to PATH to run odapkit" >&2 ;; esac
+echo "linked ~/.local/bin/odapkit; odapkit help lists the tools"
+
 echo "== Virtual T1 network"
 # The LAN for the virtual T1 needs administrator rights once; it is not run automatically.
-"$here/bin/odap-vmnet" status || true
+"$here/bin/odapkit-vmnet" status || true
 
 echo "== Done"

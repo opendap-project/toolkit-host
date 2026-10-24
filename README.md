@@ -44,7 +44,8 @@ Recommendations from [`docs/research/`](docs/research/), not installed yet:
 ## Layout
 
 - `setup.sh` — installs and checks everything; safe to run again
-- `bin/odap-vmnet` — a LAN address for virtual devices: `odap-vmnet install` once, as yourself (it asks for administrator rights only for the socket_vmnet daemon); `status`, `uninstall`
+- `bin/odapkit` — the Developer Toolkit's one command (RFC 0009): `odapkit <tool>` runs the `odapkit-<tool>` of any toolkit repository; `odapkit help` lists them. `setup.sh` links it into `~/.local/bin`
+- `bin/odapkit-vmnet` — a LAN address for virtual devices: `odapkit vmnet install` once, as yourself (it asks for administrator rights only for the socket_vmnet daemon); `status`, `uninstall`
 - `Brewfile` — Homebrew packages
 - `docs/` — requirements, research and specs (development workflow)
 

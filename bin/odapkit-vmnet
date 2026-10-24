@@ -1,7 +1,7 @@
 #!/bin/sh
-# odap-vmnet: give virtual OpenDAP devices a NIC on this Mac's network (virtual-devices VD-003).
+# Give virtual OpenDAP devices a NIC on this Mac's network (virtual-devices VD-003).
 #
-# Usage: odap-vmnet [install|uninstall|status]   (default: status)
+# Usage: odapkit vmnet [install|uninstall|status]   (default: status)
 #
 # macOS bridges a VM to the LAN only through vmnet.framework, which needs root. socket_vmnet (Lima
 # project) is the small root daemon that holds vmnet; QEMU connects to it as the user.
@@ -16,7 +16,7 @@
 # Exit status: 0 success (status: running), 1 failure (status: not running), 2 usage error.
 set -eu
 
-die() { echo "odap-vmnet: $1" >&2; exit "${2:-1}"; }
+die() { echo "odapkit vmnet: $1" >&2; exit "${2:-1}"; }
 
 [ "$(uname -s)" = Darwin ] || die "macOS only; on Linux, bridge a tap device instead" 2
 
@@ -100,7 +100,7 @@ case "${1:-status}" in
     echo "removed $label (the binaries stay in /opt/socket_vmnet)" ;;
   status)
     if [ -S "$sock" ]; then echo "running: $sock"
-    else echo "not running ($sock missing); to install: odap-vmnet install"; exit 1; fi ;;
+    else echo "not running ($sock missing); to install: odapkit vmnet install"; exit 1; fi ;;
   -h|--help) sed -n '2,15s/^# \{0,1\}//p' "$0" ;;
-  *) die "usage: odap-vmnet [install|uninstall|status]" 2 ;;
+  *) die "usage: odapkit vmnet [install|uninstall|status]" 2 ;;
 esac

@@ -32,4 +32,4 @@ brew "zig"
 # Emulation, and the Linux VM that builds images and the sysroot
 brew "qemu"
 brew "lima"
-# The LAN for virtual devices (socket_vmnet) is installed by bin/odap-vmnet, not Homebrew
+# The LAN for virtual devices (socket_vmnet) is installed by bin/odapkit-vmnet, not Homebrew
